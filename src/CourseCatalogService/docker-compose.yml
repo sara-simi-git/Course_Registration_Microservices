@@ -1,0 +1,35 @@
+
+services:
+  catalog.db:
+    image: mongo:latest
+    container_name: course-catalog-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-catalog-data:/data/db
+    networks:
+      - catalog-network
+
+  catalog.api:
+    image: course-catalog-api:latest
+    build:
+      context: ..
+      dockerfile: CourseCatalogService/Dockerfile
+    container_name: course-catalog-api
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__MongoConnection=mongodb://catalog.db:27017
+      - DatabaseName=CourseCatalogDb
+    depends_on:
+      - catalog.db
+    networks:
+      - catalog-network
+
+volumes:
+  mongo-catalog-data:
+
+networks:
+  catalog-network:
+    driver: bridge

@@ -1,0 +1,43 @@
+services:
+  registration.db:
+    image: postgres:16-alpine
+    container_name: registration-db
+    environment:
+      POSTGRES_DB: RegistrationDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - registration-postgres-data:/var/lib/postgresql/data
+    networks:
+      - registration-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d RegistrationDb"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  registration.api:
+    image: registration-service:latest
+    build:
+      context: ..
+      dockerfile: RegistrationService/Dockerfile
+    container_name: registration-service
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__RegistrationConnection: Host=registration.db;Port=5432;Database=RegistrationDb;Username=postgres;Password=postgres
+    depends_on:
+      registration.db:
+        condition: service_healthy
+    networks:
+      - registration-network
+
+volumes:
+  registration-postgres-data:
+
+networks:
+  registration-network:
+    driver: bridge

@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ums-sqlserver
+    environment:
+      SA_PASSWORD: "StrongPass123!"
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1434:1433"        # host 1434 to avoid conflict with local SQL Server
+    volumes:
+      - ums_sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'StrongPass123!' -Q 'SELECT 1' -No -C || exit 1"]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+
+  usermanagement:
+    build:
+      context: ..
+      dockerfile: UserManagementService/Dockerfile
+    container_name: ums-api
+    ports:
+      - "5001:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=UserManagementDb;User Id=sa;Password=StrongPass123!;TrustServerCertificate=True;"
+      JwtSettings__SecretKey: "SuperSecretKey_MustBe32CharsMin!!"
+      JwtSettings__Issuer: "UserManagementService"
+      JwtSettings__Audience: "LearnBudgetClients"
+      JwtSettings__ExpiryMinutes: "60"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: on-failure
+
+volumes:
+  ums_sqldata:

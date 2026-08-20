@@ -1,0 +1,11 @@
+[2026-07-16 18:44:06 WRN] BffService Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://+:80'. {"EventId":{"Id":15},"SourceContext":"Microsoft.AspNetCore.Hosting.Diagnostics"}
+[2026-07-16 18:44:07 INF] BffService Now listening on: http://[::]:80 {"EventId":{"Id":14,"Name":"ListeningOnAddress"},"SourceContext":"Microsoft.Hosting.Lifetime"}
+[2026-07-16 18:44:07 INF] BffService Application started. Press Ctrl+C to shut down. {"SourceContext":"Microsoft.Hosting.Lifetime"}
+[2026-07-16 18:44:07 INF] BffService Hosting environment: Development {"SourceContext":"Microsoft.Hosting.Lifetime"}
+[2026-07-16 18:44:07 INF] BffService Content root path: /app {"SourceContext":"Microsoft.Hosting.Lifetime"}
+[2026-07-16 18:54:05 INF] BffService Application is shutting down... {"SourceContext":"Microsoft.Hosting.Lifetime"}
+[2026-07-16 19:33:06 WRN] BffService Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://+:80'. {"EventId":{"Id":15},"SourceContext":"Microsoft.AspNetCore.Hosting.Diagnostics"}
+[2026-07-16 19:33:06 INF] BffService Now listening on: http://[::]:80 {"EventId":{"Id":14,"Name":"ListeningOnAddress"},"SourceContext":"Microsoft.Hosting.Lifetime"}
+[2026-07-16 19:33:07 INF] BffService Application started. Press Ctrl+C to shut down. {"SourceContext":"Microsoft.Hosting.Lifetime"}
+[2026-07-16 19:33:07 INF] BffService Hosting environment: Development {"SourceContext":"Microsoft.Hosting.Lifetime"}
+[2026-07-16 19:33:07 INF] BffService Content root path: /app {"SourceContext":"Microsoft.Hosting.Lifetime"}

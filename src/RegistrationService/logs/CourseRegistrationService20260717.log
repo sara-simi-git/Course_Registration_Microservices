@@ -1,0 +1,2 @@
+[2026-07-17 14:45:17 ERR] CourseRegistrationService An error occurred using the connection to database 'RegistrationDb' on server 'tcp://registration.db:5432'. {"EventId":{"Id":20004,"Name":"Microsoft.EntityFrameworkCore.Database.Connection.ConnectionError"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Connection"}
+[2026-07-17 14:45:19 INF] CourseRegistrationService Application is shutting down... {"SourceContext":"Microsoft.Hosting.Lifetime"}

@@ -1,0 +1,42 @@
+services:
+  inventory.api:
+    build:
+      context: ..
+      dockerfile: InventoryService/Dockerfile
+    container_name: inventory-api
+    ports:
+      - "8082:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__InventoryConnection: Host=inventory.db;Port=5432;Database=InventoryDb;Username=postgres;Password=postgres
+    depends_on:
+      inventory.db:
+        condition: service_healthy
+    networks:
+      - inventory-network
+
+  inventory.db:
+    image: postgres:16-alpine
+    container_name: inventory-db
+    environment:
+      POSTGRES_DB: InventoryDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - inventory-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d InventoryDb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - inventory-network
+
+volumes:
+  inventory-postgres-data:
+
+networks:
+  inventory-network:
+    driver: bridge

@@ -1,0 +1,324 @@
+services:
+  usermanagement.api:
+    build:
+      context: ./src
+      dockerfile: UserManagementService/Dockerfile
+    container_name: ums-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=UserManagementDb;User Id=sa;Password=StrongPass123!;TrustServerCertificate=True;
+      - JwtSettings__SecretKey=SuperSecretKey_MustBe32CharsMin!!
+      - JwtSettings__Issuer=UserManagementService
+      - JwtSettings__Audience=LearnBudgetClients
+      - JwtSettings__ExpiryMinutes=60
+      - Seq__ServerUrl=http://seq:5341
+    volumes:
+      - ./src/UserManagementService/logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      retries: 10
+      timeout: 5s
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ums-sqlserver
+    environment:
+      SA_PASSWORD: "StrongPass123!"
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+    volumes:
+      - ums_sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'StrongPass123!' -Q 'SELECT 1' -No -C || exit 1"]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - app-network
+
+  notificationservice:
+    build:
+      context: ./src
+      dockerfile: NotificationService/Dockerfile
+    container_name: notification-api
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__Redis=redis:6379
+      - RabbitMQ__Host=rabbitmq
+      - Seq__ServerUrl=http://seq:5341
+    volumes:
+      - ./src/NotificationService/logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 10s
+      retries: 10
+      timeout: 5s
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-broker
+    ports:
+    - "5672:5672"
+    - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+
+  registration.api:
+    build:
+      context: ./src
+      dockerfile: RegistrationService/Dockerfile
+    container_name: course-registration-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__RegistrationConnection=Host=registration.db;Port=5432;Database=RegistrationDb;Username=postgres;Password=postgres
+      - RabbitMQ__Host=rabbitmq
+      - Redis__Connection=redis:6379
+      - Seq__ServerUrl=http://seq:5341
+    volumes:
+      - ./src/RegistrationService/logs:/app/logs
+    depends_on:
+      registration.db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      retries: 10
+      timeout: 5s
+    networks:
+      - app-network
+
+  registration.db:
+    image: postgres:16-alpine
+    container_name: registration-db
+    environment:
+      POSTGRES_DB: RegistrationDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - registration-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d RegistrationDb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+
+  catalog.db:
+    image: mongo:latest
+    container_name: course-catalog-db
+    volumes:
+      - mongo-catalog-data:/data/db
+    networks:
+      - app-network
+
+  catalog.api1:
+    build:
+      context: ./src
+      dockerfile: CourseCatalogService/Dockerfile
+    container_name: course-catalog-api1
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__MongoConnection=mongodb://catalog.db:27017
+      - DatabaseName=CourseCatalogDb
+      - Redis__Connection=redis:6379
+      - Seq__ServerUrl=http://seq:5341
+    volumes:
+      - ./src/CourseCatalogService/logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      retries: 10
+      timeout: 5s
+    depends_on:
+      catalog.db:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  catalog.api2:
+    build:
+      context: ./src
+      dockerfile: CourseCatalogService/Dockerfile
+    container_name: course-catalog-api2
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__MongoConnection=mongodb://catalog.db:27017
+      - DatabaseName=CourseCatalogDb
+      - Redis__Connection=redis:6379
+      - Seq__ServerUrl=http://seq:5341
+    volumes:
+      - ./src/CourseCatalogService/logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      retries: 10
+      timeout: 5s
+    depends_on:
+      catalog.db:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  catalog.lb:
+    image: nginx:stable-alpine
+    container_name: catalog-lb
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      catalog.api1:
+        condition: service_healthy
+      catalog.api2:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  api.gateway:
+    build:
+      context: ./src
+      dockerfile: ApiGatewayService/Dockerfile
+    container_name: api-gateway
+    environment:
+      - Seq__ServerUrl=http://seq:5341
+    volumes:
+      - ./src/ApiGatewayService/logs:/app/logs
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 10s
+      retries: 10
+      timeout: 5s
+    depends_on:
+      - bff.api
+      - registration.api
+      - catalog.lb
+      - usermanagement.api
+    networks:
+      - app-network
+
+  bff.api:
+    build:
+      context: ./src
+      dockerfile: BffService/Dockerfile
+    container_name: bff-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Seq__ServerUrl=http://seq:5341
+    volumes:
+      - ./src/BffService/logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 10s
+      retries: 10
+      timeout: 5s
+    depends_on:
+      - registration.api
+      - catalog.lb
+    networks:
+      - app-network
+
+  inventory.api:
+    build:
+      context: ./src
+      dockerfile: InventoryService/Dockerfile
+    container_name: inventory-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__InventoryConnection=Host=inventory.db;Port=5432;Database=InventoryDb;Username=postgres;Password=postgres
+      - RabbitMQ__Host=rabbitmq
+      - Redis__Connection=redis:6379
+      - Seq__ServerUrl=http://seq:5341
+    volumes:
+      - ./src/InventoryService/logs:/app/logs
+    depends_on:
+      inventory.db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      retries: 10
+      timeout: 5s
+    networks:
+      - app-network
+
+  inventory.db:
+    image: postgres:16-alpine
+    container_name: inventory-db
+    environment:
+      POSTGRES_DB: InventoryDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - inventory-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d InventoryDb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+
+  seq:
+    image: datalust/seq:2024.3
+    container_name: seq
+    environment:
+      ACCEPT_EULA: Y
+    ports:
+      - "5341:5341"
+      - "8081:80"
+    networks:
+      - app-network
+
+volumes:
+  ums_sqldata:
+  mongo-catalog-data:
+  registration-postgres-data:
+  inventory-postgres-data:
+
+networks:
+  app-network:
+    driver: bridge
