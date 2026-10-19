@@ -1,6 +1,6 @@
-# Learn Budget Microservices
+# Course_Registration_Microservices
 
-Learn Budget Microservices is a distributed .NET application for managing course enrollment. It demonstrates independently deployable services, private data stores, an API gateway, a BFF, asynchronous messaging, a choreography-based saga, caching, load balancing, and centralized observability.
+Course_Registration_Microservices is a distributed .NET application for managing course enrollment. It demonstrates independently deployable services, private data stores, an API gateway, a BFF, asynchronous messaging, a choreography-based saga, caching, load balancing, and centralized observability.
 
 The repository's course-registration vocabulary maps to a common order workflow:
 
